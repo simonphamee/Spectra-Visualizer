@@ -48,8 +48,41 @@
     max-width: 960px;
     padding: 28px 24px 0;
     display: flex;
-    align-items: baseline;
+    align-items: center;
     justify-content: space-between;
+    gap: 16px;
+  }
+
+  .mode-switch {
+    display: flex;
+    gap: 2px;
+    padding: 2px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+  }
+
+  .mode-switch button {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    padding: 5px 10px;
+    cursor: pointer;
+  }
+
+  .mode-switch button:hover { color: var(--text); }
+  .mode-switch button[aria-pressed="true"] {
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+  .mode-switch button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
   }
 
   header h1 {
@@ -170,8 +203,8 @@
 
   #transport {
     display: flex;
-    align-items: center;
-    gap: 16px;
+    flex-direction: column;
+    gap: 10px;
     padding: 12px 16px;
     background: var(--panel);
     border: 1px solid var(--line);
@@ -183,16 +216,138 @@
 
   #track-name {
     font-family: var(--mono);
-    font-size: 12px;
-    color: var(--text);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    color: var(--text-dim);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    flex: 1;
   }
 
-  /* Native controls for Step 1; custom transport comes later */
-  audio { height: 32px; }
+  .controls-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  /* Square icon buttons (play/pause, mute) */
+  .t-btn {
+    width: 36px;
+    height: 36px;
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    color: var(--accent);
+    cursor: pointer;
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+  }
+  .t-btn:hover { border-color: var(--accent); box-shadow: 0 0 12px var(--accent-soft); }
+  .t-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .t-btn svg { width: 16px; height: 16px; fill: currentColor; }
+
+  /* Icon swapping via state classes */
+  #play-btn .icon-pause,
+  #play-btn.playing .icon-play { display: none; }
+  #play-btn.playing .icon-pause { display: block; }
+  #mute-btn .icon-muted,
+  #mute-btn.muted .icon-vol { display: none; }
+  #mute-btn.muted .icon-muted { display: block; }
+
+  #time-readout {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    color: var(--text);
+    flex: none;
+    min-width: 102px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;  /* digits don't jitter */
+  }
+
+  /* Custom seek bar — div-based for full styling control */
+  #seek-bar {
+    position: relative;
+    flex: 1;
+    height: 20px;                 /* generous hit target */
+    cursor: pointer;
+    touch-action: none;           /* we own the pointer gestures */
+  }
+  #seek-bar::before {             /* track */
+    content: "";
+    position: absolute;
+    left: 0; right: 0;
+    top: 50%;
+    height: 5px;
+    transform: translateY(-50%);
+    background: var(--line);
+    border-radius: 3px;
+  }
+  #seek-fill {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 0%;
+    height: 5px;
+    transform: translateY(-50%);
+    border-radius: 3px;
+    background: linear-gradient(90deg, #a96a14, var(--accent));
+    pointer-events: none;
+  }
+  #seek-handle {
+    position: absolute;
+    left: 0%;
+    top: 50%;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #ffe9b8;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 8px rgba(245, 166, 35, 0.5);
+    opacity: 0;
+    transition: opacity 120ms ease;
+    pointer-events: none;
+  }
+  #seek-bar:hover #seek-handle,
+  #seek-bar.dragging #seek-handle,
+  #seek-bar:focus-visible #seek-handle { opacity: 1; }
+  #seek-bar:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+
+  /* Volume */
+  .volume-group { display: flex; align-items: center; gap: 8px; flex: none; }
+  #vol-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 84px;
+    height: 5px;
+    border-radius: 3px;
+    background: var(--line);
+    cursor: pointer;
+  }
+  #vol-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 11px; height: 11px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: none;
+  }
+  #vol-slider::-moz-range-thumb {
+    width: 11px; height: 11px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: none;
+  }
+  #vol-slider::-moz-range-progress {
+    background: var(--accent);
+    height: 5px;
+    border-radius: 3px;
+  }
+
+  /* Engine only — custom transport owns the UI */
+  audio { display: none; }
 
   @media (prefers-reduced-motion: reduce) {
     .slot, #drop-zone { transition: none; }
@@ -206,6 +361,11 @@
        ============================================================ -->
   <header>
     <h1><span class="tick">▮</span> Spectra</h1>
+    <nav class="mode-switch" aria-label="Visualization mode">
+      <button data-mode="bars"     aria-pressed="true">Bars</button>
+      <button data-mode="circular" aria-pressed="false">Radial</button>
+      <button data-mode="waveform" aria-pressed="false">Wave</button>
+    </nav>
     <span id="status-readout">FFT 512 · STANDBY</span>
   </header>
 
@@ -226,9 +386,39 @@
   <footer>
     <div id="transport">
       <span id="track-name">—</span>
-      <!-- Native controls used as the audio element + graph source.
-           crossorigin not needed: object URLs are same-origin. -->
-      <audio id="audio-el" controls></audio>
+
+      <div class="controls-row">
+        <button id="play-btn" class="t-btn" aria-label="Play">
+          <svg class="icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+          <svg class="icon-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>
+        </button>
+
+        <span id="time-readout">00:00 / 00:00</span>
+
+        <div id="seek-bar" role="slider" tabindex="0" aria-label="Seek position"
+             aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <div id="seek-fill"></div>
+          <div id="seek-handle"></div>
+        </div>
+
+        <div class="volume-group">
+          <button id="mute-btn" class="t-btn" aria-label="Mute">
+            <svg class="icon-vol" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 9v6h4l5 5V4L7 9H3z"/>
+              <path d="M16 8.6a4.4 4.4 0 010 6.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <svg class="icon-muted" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 9v6h4l5 5V4L7 9H3z"/>
+              <path d="M16 9.5l5 5m0-5l-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </button>
+          <input id="vol-slider" type="range" min="0" max="1" step="0.01" value="1" aria-label="Volume" />
+        </div>
+      </div>
+
+      <!-- The audio element stays in the graph as the decode/playback
+           engine — controls removed, visually hidden, logic intact. -->
+      <audio id="audio-el"></audio>
     </div>
   </footer>
 
@@ -257,7 +447,8 @@ const ctx2d      = canvas.getContext("2d");
 // --- Audio graph state (populated lazily) ------------------------
 let audioCtx  = null;   // AudioContext — created on first user gesture
 let analyser  = null;   // AnalyserNode — FFT provider
-let freqData  = null;   // Uint8Array(frequencyBinCount) — reused every frame
+let freqData  = null;   // Uint8Array(frequencyBinCount) — frequency domain
+let timeData  = null;   // Uint8Array(fftSize) — raw time-domain samples
 let graphWired = false; // createMediaElementSource may run only ONCE per element
 
 /**
@@ -291,8 +482,9 @@ async function wireAudioGraph() {
   analyser.fftSize = FFT_SIZE;
   analyser.smoothingTimeConstant = 0.85;  // silky inter-frame easing
 
-  // One reusable buffer — allocated once, filled every frame.
-  freqData = new Uint8Array(analyser.frequencyBinCount); // 256 bins
+  // Reusable buffers — allocated once, filled in place every frame.
+  freqData = new Uint8Array(analyser.frequencyBinCount); // 256 freq bins
+  timeData = new Uint8Array(analyser.fftSize);           // 512 raw samples
 
   source.connect(analyser);
   analyser.connect(ctx.destination);
@@ -357,7 +549,126 @@ dropZone.addEventListener("drop", (e) => {
 
 
 /* ==============================================================
-   SECTION 3 — RENDER LOOP
+   SECTION 3 — TRANSPORT UI
+   The hidden <audio> element remains the playback engine; these
+   controls are a thin view layer over its state. Per-frame
+   position sync happens in updateTransportUI(), called from the
+   render loop with change-guards so the DOM is only touched when
+   a value actually moves.
+   ============================================================== */
+
+const playBtn    = document.getElementById("play-btn");
+const muteBtn    = document.getElementById("mute-btn");
+const volSlider  = document.getElementById("vol-slider");
+const seekBar    = document.getElementById("seek-bar");
+const seekFill   = document.getElementById("seek-fill");
+const seekHandle = document.getElementById("seek-handle");
+const timeEl     = document.getElementById("time-readout");
+
+/** Seconds → "MM:SS". NaN/Infinity (no metadata yet) renders 00:00. */
+function fmtTime(s) {
+  if (!Number.isFinite(s) || s < 0) s = 0;
+  const m   = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  return String(m).padStart(2, "0") + ":" + String(sec).padStart(2, "0");
+}
+
+// --- Play / pause -------------------------------------------------
+async function togglePlay() {
+  if (!audioEl.src) return;
+  // Defensive resume — some browsers re-suspend on tab switch
+  if (audioCtx && audioCtx.state === "suspended") await audioCtx.resume();
+  if (audioEl.paused) audioEl.play(); else audioEl.pause();
+}
+playBtn.addEventListener("click", togglePlay);
+
+// Button state mirrors the ELEMENT's events, not our click handler —
+// so spacebar shortcuts, track end, etc. all stay in sync for free.
+audioEl.addEventListener("play", () => {
+  playBtn.classList.add("playing");
+  playBtn.setAttribute("aria-label", "Pause");
+});
+audioEl.addEventListener("pause", () => {
+  playBtn.classList.remove("playing");
+  playBtn.setAttribute("aria-label", "Play");
+});
+
+// --- Seek bar (pointer-driven, drag-capable) -----------------------
+let seekDragging = false;
+
+function seekToPointer(e) {
+  const rect  = seekBar.getBoundingClientRect();
+  const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+  if (Number.isFinite(audioEl.duration)) {
+    audioEl.currentTime = ratio * audioEl.duration;
+  }
+}
+seekBar.addEventListener("pointerdown", (e) => {
+  seekDragging = true;
+  seekBar.classList.add("dragging");
+  seekBar.setPointerCapture(e.pointerId);  // drag keeps working off-bar
+  seekToPointer(e);
+});
+seekBar.addEventListener("pointermove", (e) => {
+  if (seekDragging) seekToPointer(e);
+});
+seekBar.addEventListener("pointerup", () => {
+  seekDragging = false;
+  seekBar.classList.remove("dragging");
+});
+
+// Keyboard support: ←/→ scrub 5s, Home/End jump
+seekBar.addEventListener("keydown", (e) => {
+  if (!Number.isFinite(audioEl.duration)) return;
+  if      (e.key === "ArrowRight") audioEl.currentTime = Math.min(audioEl.duration, audioEl.currentTime + 5);
+  else if (e.key === "ArrowLeft")  audioEl.currentTime = Math.max(0, audioEl.currentTime - 5);
+  else if (e.key === "Home")       audioEl.currentTime = 0;
+  else if (e.key === "End")        audioEl.currentTime = audioEl.duration;
+  else return;
+  e.preventDefault();
+});
+
+// --- Volume / mute --------------------------------------------------
+volSlider.addEventListener("input", () => {
+  audioEl.volume = parseFloat(volSlider.value);
+  audioEl.muted  = false;
+  muteBtn.classList.remove("muted");
+  muteBtn.setAttribute("aria-label", "Mute");
+});
+muteBtn.addEventListener("click", () => {
+  audioEl.muted = !audioEl.muted;
+  muteBtn.classList.toggle("muted", audioEl.muted);
+  muteBtn.setAttribute("aria-label", audioEl.muted ? "Unmute" : "Mute");
+});
+
+// --- Per-frame sync (called from the render loop) -------------------
+// Change-guards: writing identical values to the DOM 60×/s still
+// costs style recalc, so we cache and compare first.
+let lastTimeStr = "";
+let lastPct     = -1;
+
+function updateTransportUI() {
+  const dur = audioEl.duration;
+  const cur = audioEl.currentTime || 0;
+
+  const str = fmtTime(cur) + " / " + fmtTime(dur);
+  if (str !== lastTimeStr) {
+    timeEl.textContent = str;
+    lastTimeStr = str;
+  }
+
+  const pct = Number.isFinite(dur) && dur > 0 ? (cur / dur) * 100 : 0;
+  if (Math.abs(pct - lastPct) > 0.05) {
+    seekFill.style.width   = pct + "%";
+    seekHandle.style.left  = pct + "%";
+    seekBar.setAttribute("aria-valuenow", String(Math.round(pct)));
+    lastPct = pct;
+  }
+}
+
+
+/* ==============================================================
+   SECTION 4 — RENDER LOOP
    Per frame: clear canvas → pull live FFT data into the reused
    Uint8Array → indexed for-loop → one bar per rendered bin.
    No allocations inside the loop; gradient is rebuilt only when
@@ -396,6 +707,54 @@ gradStrip.height = 256;
   g.fillRect(0, 0, 1, 256);
 }
 
+/* --- Visual upgrade tuning ----------------------------------------
+   Peak-hold physics is frame-based (tuned for ~60fps displays). */
+const PEAK_HOLD_FRAMES = 18;     // suspension time before falling
+const PEAK_GRAVITY     = 0.32;   // px/frame² downward acceleration
+const PEAK_THICKNESS   = 2;      // cap line height in px
+const GLOW_THRESHOLD   = 200;    // raw byte value that triggers bloom
+const GLOW_BLUR        = 15;     // ctx.shadowBlur radius
+const GLOW_COLOR       = "#f5a623";
+const REFL_SCALE       = 0.55;   // reflection is vertically squashed
+const REFL_ALPHA       = 0.15;   // glossy-surface opacity
+const BASELINE_RATIO   = 0.74;   // bars sit at 74% height; mirror below
+
+/* Peak-hold state — one slot per rendered bin, allocated ONCE.
+   peakY[i]    = current cap height above the baseline (px)
+   peakVel[i]  = current fall velocity (px/frame)
+   peakHold[i] = frames remaining before gravity kicks in
+   barHs[i]    = this frame's bar heights, reused by the mirror pass */
+const peakY    = new Float32Array(BINS_RENDERED);
+const peakVel  = new Float32Array(BINS_RENDERED);
+const peakHold = new Float32Array(BINS_RENDERED);
+const barHs    = new Float32Array(BINS_RENDERED);
+
+/* --- Visualization modes -------------------------------------------
+   'bars' | 'circular' | 'waveform' — dispatched inside animate(). */
+let currentMode = "bars";
+
+/* Precomputed unit vectors for the radial layout. The spoke angles
+   never change, so cos/sin become table lookups instead of live trig:
+   2 × 180 = 360 Math calls saved per frame.
+     θᵢ = (i / n)·2π − π/2      ← −π/2 starts bin 0 at 12 o'clock */
+const angCos = new Float32Array(BINS_RENDERED);
+const angSin = new Float32Array(BINS_RENDERED);
+for (let i = 0; i < BINS_RENDERED; i++) {
+  const theta = (i / BINS_RENDERED) * Math.PI * 2 - Math.PI / 2;
+  angCos[i] = Math.cos(theta);
+  angSin[i] = Math.sin(theta);
+}
+
+// Mode switch wiring — aria-pressed doubles as the style hook
+const modeButtons = document.querySelectorAll(".mode-switch button");
+modeButtons.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    currentMode = btn.dataset.mode;
+    modeButtons.forEach((b) =>
+      b.setAttribute("aria-pressed", String(b === btn)));
+  });
+});
+
 /** Match the canvas bitmap to its CSS box (DPR-aware). */
 function resizeCanvasToDisplaySize() {
   const dpr = window.devicePixelRatio || 1;
@@ -415,6 +774,7 @@ function resizeCanvasToDisplaySize() {
 function animate() {
   rafId = requestAnimationFrame(animate);
   resizeCanvasToDisplaySize();
+  updateTransportUI();   // seek fill + time readout, change-guarded
 
   const w = canvas.clientWidth;
   const h = canvas.clientHeight;
@@ -428,43 +788,201 @@ function animate() {
     return;
   }
 
-  // 2. READ — fills the preallocated buffer in place (0–255 per bin)
+  // 2. READ + DRAW — dispatched by visualization mode. Note the
+  // waveform mode pulls from a DIFFERENT data source (time domain).
+  if (currentMode === "circular") {
+    analyser.getByteFrequencyData(freqData);    // frequency domain
+    drawCircular(w, h);
+    return;
+  }
+  if (currentMode === "waveform") {
+    analyser.getByteTimeDomainData(timeData);   // TIME domain
+    drawWaveform(w, h);
+    return;
+  }
+
+  // Default mode: linear bars (frequency domain)
   analyser.getByteFrequencyData(freqData);
 
   // 3. ITERATE + 4. DRAW
   const n       = Math.min(BINS_RENDERED, freqData.length);
-  const slotW   = w / n;                      // bar + gap
+  const baseY   = Math.round(h * BASELINE_RATIO);  // bars stand here
+  const slotW   = w / n;                           // bar + gap
   const barW    = Math.max(1, slotW - BAR_GAP);
-  const usableH = h - 10;                     // headroom at the top
+  const usableH = baseY - 10;                      // headroom at top
   const capR    = barW / 2;
 
+  /* ---- PASS 1: bars + glow + peak-hold caps ---- */
   for (let i = 0; i < n; i++) {
-    const v = freqData[i] / 255;              // normalize 0..1
+    const raw = freqData[i];
+    const v   = raw / 255;                         // normalize 0..1
 
-    /* High-frequency tilt — see explanation in chat.
-       comp ramps 1.0 (bass, left) → 1+HF_TILT (treble, right)
-       along a QUADRATIC curve in bin index, so mids are barely
-       touched and only the naturally weak top end gets lifted. */
+    // Quadratic high-frequency tilt (see Step 2 notes)
     const t    = i / (n - 1);
     const comp = 1 + HF_TILT * t * t;
-
-    // v² = perceptual loudness curve; comp = spectral tilt; clamp.
     const barH = Math.min(usableH, Math.max(2, v * v * comp * usableH));
-    const x    = i * slotW + BAR_GAP / 2;
-    const y    = h - barH;
+    barHs[i]   = barH;                             // reused by mirror pass
 
-    // Bar body: the gradient strip stretched to THIS bar's height
+    const x = i * slotW + BAR_GAP / 2;
+    const y = baseY - barH;
+
+    // GLOW: bloom only behind genuinely hot bins. Shadow rendering
+    // is expensive, so it's gated on the raw byte value and reset
+    // immediately after — short bars never pay for it.
+    const hot = raw > GLOW_THRESHOLD;
+    if (hot) {
+      ctx2d.shadowBlur  = GLOW_BLUR;
+      ctx2d.shadowColor = GLOW_COLOR;
+    }
+
+    // Bar body: gradient strip stretched to this bar's height
     ctx2d.drawImage(gradStrip, x, y, barW, barH);
 
-    // Rounded cap: half-disc at the tip in the hottest ramp color.
-    // Skipped for near-silent stubs so the baseline stays calm.
+    // Rounded dome at the bar tip
     if (barH > capR + 3) {
       ctx2d.fillStyle = CAP_COLOR;
       ctx2d.beginPath();
       ctx2d.arc(x + capR, y, capR, Math.PI, 0);
       ctx2d.fill();
     }
+
+    if (hot) ctx2d.shadowBlur = 0;                 // glow off ASAP
+
+    // PEAK-HOLD physics: instant push up, suspended hold, then
+    // gravity-accelerated fall until it lands on the bar below.
+    if (barH >= peakY[i]) {
+      peakY[i]    = barH;                          // shoved up instantly
+      peakVel[i]  = 0;
+      peakHold[i] = PEAK_HOLD_FRAMES;              // re-arm suspension
+    } else if (peakHold[i] > 0) {
+      peakHold[i]--;                               // hang in the air
+    } else {
+      peakVel[i] += PEAK_GRAVITY;                  // free fall
+      peakY[i]    = Math.max(barH, peakY[i] - peakVel[i]);
+    }
+
+    // Cap line: floats PEAK_THICKNESS above its recorded height
+    ctx2d.fillStyle = CAP_COLOR;
+    ctx2d.fillRect(x, baseY - peakY[i] - PEAK_THICKNESS - 2,
+                   barW, PEAK_THICKNESS);
   }
+
+  /* ---- PASS 2: mirrored reflection ----
+     Mirror about the baseline with a vertical squash: a point at
+     height y above baseY lands REFL_SCALE·y below it. One transform
+     wraps the whole pass; bar heights are replayed from barHs with
+     no recompute. Glow and caps are deliberately excluded — real
+     glossy surfaces reflect mass, not light bloom. */
+  ctx2d.save();
+  ctx2d.translate(0, baseY);
+  ctx2d.scale(1, -REFL_SCALE);
+  ctx2d.translate(0, -baseY);
+  ctx2d.globalAlpha = REFL_ALPHA;
+  for (let i = 0; i < n; i++) {
+    const barH = barHs[i];
+    const x    = i * slotW + BAR_GAP / 2;
+    ctx2d.drawImage(gradStrip, x, baseY - barH, barW, barH);
+  }
+  ctx2d.restore();
+
+  // Hairline seam where the "glass" meets the bars
+  ctx2d.globalAlpha = 0.5;
+  ctx2d.fillStyle = "#232a36";
+  ctx2d.fillRect(0, baseY, w, 1);
+  ctx2d.globalAlpha = 1;
+}
+
+/**
+ * CIRCULAR / RADIAL MODE — frequency bins as a pulsing sunburst.
+ *
+ * Geometry per bin i (cos/sin from the precomputed tables):
+ *   θᵢ      = (i / n)·2π − π/2
+ *   lenᵢ    = v²·comp·maxLen        (same perceptual + HF-tilt curves)
+ *   innerᵢ  = (cx + cosθᵢ·r₀,        cy + sinθᵢ·r₀)
+ *   outerᵢ  = (cx + cosθᵢ·(r₀+lenᵢ), cy + sinθᵢ·(r₀+lenᵢ))
+ *
+ * All 180 spokes are accumulated into ONE path and stroked once —
+ * a single GPU stroke call instead of 180.
+ */
+function drawCircular(w, h) {
+  const n   = Math.min(BINS_RENDERED, freqData.length);
+  const cx  = w / 2;
+  const cy  = h / 2;
+  const dim = Math.min(w, h);
+
+  // Bass pulse: mean of the lowest 8 bins drives the ring radius,
+  // so the whole sunburst breathes with the kick drum.
+  let bass = 0;
+  for (let i = 0; i < 8; i++) bass += freqData[i];
+  bass /= 8 * 255;                                   // normalize 0..1
+  const r0     = dim * 0.16 + bass * dim * 0.035;    // breathing radius
+  const maxLen = dim * 0.30;                         // spoke headroom
+
+  // Spoke width fills the inner circumference minus a small gap
+  const spokeW = Math.max(1.5, (2 * Math.PI * r0) / n - 1.5);
+
+  ctx2d.beginPath();
+  for (let i = 0; i < n; i++) {
+    const v    = freqData[i] / 255;
+    const t    = i / (n - 1);
+    const comp = 1 + HF_TILT * t * t;
+    const len  = Math.max(2, v * v * comp * maxLen);
+    const r1   = r0 + len;
+    ctx2d.moveTo(cx + angCos[i] * r0, cy + angSin[i] * r0);
+    ctx2d.lineTo(cx + angCos[i] * r1, cy + angSin[i] * r1);
+  }
+  ctx2d.lineWidth   = spokeW;
+  ctx2d.lineCap     = "round";
+  ctx2d.strokeStyle = GLOW_COLOR;
+  ctx2d.stroke();
+
+  // Inner ring — opacity rides the bass for a heartbeat glow
+  ctx2d.beginPath();
+  ctx2d.arc(cx, cy, Math.max(4, r0 - 7), 0, Math.PI * 2);
+  ctx2d.lineWidth   = 1.5;
+  ctx2d.strokeStyle = CAP_COLOR;
+  ctx2d.globalAlpha = 0.3 + bass * 0.7;
+  ctx2d.stroke();
+  ctx2d.globalAlpha = 1;
+}
+
+/**
+ * WAVEFORM MODE — time-domain oscilloscope trace.
+ *
+ * getByteTimeDomainData fills timeData with RAW SAMPLE AMPLITUDES,
+ * not frequency magnitudes: 128 is the zero crossing (silence),
+ * 0 and 255 are the extremes. Mapping per sample k:
+ *   x = k · w/(len−1)
+ *   y = cy + (v/128 − 1)·A          A = 0.38·h (vertical gain)
+ *
+ * One continuous polyline, one stroke. The neon glow is a single
+ * shadow pass — shadows cost per-STROKE, not per-point, so one
+ * 512-point line glows for the price of one rectangle.
+ */
+function drawWaveform(w, h) {
+  const len  = timeData.length;                // 512 samples
+  const cy   = h / 2;
+  const amp  = h * 0.38;
+  const step = w / (len - 1);
+
+  // Graticule: faint center reference line, drawn first (behind)
+  ctx2d.globalAlpha = 0.15;
+  ctx2d.fillStyle   = "#5c6675";
+  ctx2d.fillRect(0, cy, w, 1);
+  ctx2d.globalAlpha = 1;
+
+  ctx2d.beginPath();
+  ctx2d.moveTo(0, cy + (timeData[0] / 128 - 1) * amp);
+  for (let k = 1; k < len; k++) {
+    ctx2d.lineTo(k * step, cy + (timeData[k] / 128 - 1) * amp);
+  }
+  ctx2d.lineWidth   = 2;
+  ctx2d.lineJoin    = "round";
+  ctx2d.strokeStyle = CAP_COLOR;
+  ctx2d.shadowBlur  = 12;
+  ctx2d.shadowColor = GLOW_COLOR;
+  ctx2d.stroke();
+  ctx2d.shadowBlur  = 0;
 }
 
 /**
@@ -484,6 +1002,7 @@ function drawIdle(w, h) {
   const n     = 96;
   const slotW = w / n;
   const barW  = Math.max(1, slotW - BAR_GAP);
+  const baseY = Math.round(h * BASELINE_RATIO);  // same shelf as playback
 
   ctx2d.globalAlpha = 0.4;
   for (let i = 0; i < n; i++) {
@@ -492,7 +1011,7 @@ function drawIdle(w, h) {
     const swell = Math.sin(phase + time * 0.9) * Math.sin(time * 0.35 + i * 0.07);
     const barH  = 4 + 7 * (0.5 + 0.5 * swell);
     const x     = i * slotW + BAR_GAP / 2;
-    ctx2d.drawImage(gradStrip, x, h - 6 - barH, barW, barH);
+    ctx2d.drawImage(gradStrip, x, baseY - barH, barW, barH);
   }
   ctx2d.globalAlpha = 1;
 }
