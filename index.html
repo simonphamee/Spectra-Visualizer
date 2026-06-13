@@ -21,6 +21,7 @@
     --text-dim:     #5c6675;   /* labels, captions             */
     --accent:       #f5a623;   /* phosphor amber (VU needle)   */
     --accent-soft:  rgba(245, 166, 35, 0.12);
+    --tip:          #ffe9b8;   /* hottest highlight — theme-set */
     --mono: "SF Mono", "Cascadia Code", "JetBrains Mono", Consolas, monospace;
     --sans: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
   }
@@ -96,11 +97,24 @@
 
   header h1 .tick { color: var(--accent); }
 
-  #status-readout {
+  #telemetry {
+    display: flex;
+    gap: 12px;
     font-family: var(--mono);
     font-size: 11px;
     letter-spacing: 0.08em;
     color: var(--text-dim);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;  /* digits hold position at 60fps */
+  }
+
+  /* Fixed min-widths stop the strip from reflowing as values change */
+  #tele-peak { min-width: 96px; }
+  #tele-db   { min-width: 56px; text-align: right; }
+  #telemetry .hot { color: var(--accent); }
+
+  @media (max-width: 720px) {
+    #tele-sr, #tele-fft { display: none; }  /* keep live values on small screens */
   }
 
   /* ---------- Canvas stage ---------- */
@@ -110,14 +124,93 @@
     max-width: 960px;
     padding: 20px 24px;
     display: flex;
-    align-items: center;
-    justify-content: center;
+    flex-direction: column;
+    gap: 14px;
     position: relative;
   }
 
+  /* ---------- Control deck ---------- */
+  #control-deck {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+
+  .deck-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  #fft-select {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text);
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+  }
+  #fft-select:focus-visible { outline: 2px solid var(--accent); }
+
+  .theme-swatches {
+    display: flex;
+    gap: 7px;
+    margin-left: auto;          /* push swatches to the right edge */
+  }
+  .swatch {
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    background: var(--sw);      /* per-button color via inline var */
+    cursor: pointer;
+    transition: box-shadow 150ms ease;
+  }
+  .swatch[aria-pressed="true"] {
+    border-color: var(--text);
+    box-shadow: 0 0 8px var(--sw);
+  }
+  .swatch:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+
+  #mic-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 6px 10px;
+    cursor: pointer;
+    transition: color 150ms ease, border-color 150ms ease;
+  }
+  #mic-btn:hover { color: var(--text); }
+  #mic-btn[aria-pressed="true"] {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+  #mic-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  #mic-btn svg { width: 12px; height: 12px; fill: currentColor; }
+
+  /* File transport is inert while the mic owns the analyser */
+  #transport.disabled { opacity: 0.45; pointer-events: none; }
+
   #stage {
     width: 100%;
-    height: 100%;
+    flex: 1;
     min-height: 320px;
     position: relative;
     background: var(--panel);
@@ -132,6 +225,41 @@
     width: 100%;
     height: 100%;
     display: block;
+  }
+
+  /* Fullscreen toggle — quiet corner chip, brightens on hover */
+  #fs-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 3;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(11, 14, 19, 0.55);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    color: var(--text-dim);
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 150ms ease, color 150ms ease, border-color 150ms ease;
+  }
+  #fs-btn:hover { opacity: 1; color: var(--accent); border-color: var(--accent); }
+  #fs-btn:focus-visible { outline: 2px solid var(--accent); opacity: 1; }
+  #fs-btn svg { width: 15px; height: 15px; fill: currentColor; }
+
+  /* Icon swap rides the stage's :fullscreen state — no JS class needed */
+  #fs-btn .icon-compress { display: none; }
+  #stage:fullscreen #fs-btn .icon-expand { display: none; }
+  #stage:fullscreen #fs-btn .icon-compress { display: block; }
+
+  /* Frameless in fullscreen: the canvas IS the display */
+  #stage:fullscreen {
+    border: none;
+    border-radius: 0;
+    background: var(--bg);
   }
 
   /* ---------- Drop zone (landing state) ----------
@@ -294,7 +422,7 @@
     height: 5px;
     transform: translateY(-50%);
     border-radius: 3px;
-    background: linear-gradient(90deg, #a96a14, var(--accent));
+    background: var(--accent);
     pointer-events: none;
   }
   #seek-handle {
@@ -304,9 +432,9 @@
     width: 12px;
     height: 12px;
     border-radius: 50%;
-    background: #ffe9b8;
+    background: var(--tip);
     transform: translate(-50%, -50%);
-    box-shadow: 0 0 8px rgba(245, 166, 35, 0.5);
+    box-shadow: 0 0 8px var(--accent);
     opacity: 0;
     transition: opacity 120ms ease;
     pointer-events: none;
@@ -361,17 +489,61 @@
        ============================================================ -->
   <header>
     <h1><span class="tick">▮</span> Spectra</h1>
-    <nav class="mode-switch" aria-label="Visualization mode">
-      <button data-mode="bars"     aria-pressed="true">Bars</button>
-      <button data-mode="circular" aria-pressed="false">Radial</button>
-      <button data-mode="waveform" aria-pressed="false">Wave</button>
-    </nav>
-    <span id="status-readout">FFT 512 · STANDBY</span>
+    <div id="telemetry">
+      <span id="tele-fft">FFT 512</span>
+      <span id="tele-sr">SR ——</span>
+      <span id="tele-peak">PEAK ——</span>
+      <span id="tele-db">−∞ dB</span>
+      <span id="tele-state">STANDBY</span>
+    </div>
   </header>
 
   <main>
+    <div id="control-deck">
+      <nav class="mode-switch" aria-label="Visualization mode">
+        <button data-mode="bars"     aria-pressed="true">Bars</button>
+        <button data-mode="circular" aria-pressed="false">Radial</button>
+        <button data-mode="waveform" aria-pressed="false">Wave</button>
+      </nav>
+
+      <label class="deck-field">
+        <span>FFT</span>
+        <select id="fft-select" aria-label="FFT size">
+          <option value="256">256</option>
+          <option value="512" selected>512</option>
+          <option value="1024">1024</option>
+          <option value="2048">2048</option>
+        </select>
+      </label>
+
+      <button id="mic-btn" aria-pressed="false" title="Use Microphone / Line-In">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 14a3 3 0 003-3V6a3 3 0 10-6 0v5a3 3 0 003 3z"/>
+          <path d="M5 11a7 7 0 0014 0h-2a5 5 0 01-10 0H5z"/>
+          <path d="M11 17.9h2V21h-2z"/>
+        </svg>
+        Mic / Line-In
+      </button>
+
+      <div class="theme-swatches" role="group" aria-label="Color theme">
+        <button class="swatch" data-theme="amber" style="--sw:#f5a623" aria-label="Amber theme"     aria-pressed="true"></button>
+        <button class="swatch" data-theme="pink"  style="--sw:#ff2ec4" aria-label="Cyberpunk theme" aria-pressed="false"></button>
+        <button class="swatch" data-theme="green" style="--sw:#22e06a" aria-label="Matrix theme"    aria-pressed="false"></button>
+        <button class="swatch" data-theme="ice"   style="--sw:#41c7ff" aria-label="Ice theme"       aria-pressed="false"></button>
+      </div>
+    </div>
+
     <div id="stage">
       <canvas id="visualizer"></canvas>
+
+      <button id="fs-btn" aria-label="Enter fullscreen" title="Fullscreen">
+        <svg class="icon-expand" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 9V4h5v2H6v3H4zm11-5h5v5h-2V6h-3V4zM4 15h2v3h3v2H4v-5zm14 0h2v5h-5v-2h3v-3z"/>
+        </svg>
+        <svg class="icon-compress" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M9 4v5H4V7h3V4h2zm6 0h2v3h3v2h-5V4zM4 15h5v5H7v-3H4v-2zm11 0h5v2h-3v3h-2v-5z"/>
+        </svg>
+      </button>
 
       <div id="drop-zone" role="button" tabindex="0"
            aria-label="Load an MP3 file. Click to browse or drop a file here.">
@@ -432,7 +604,7 @@
    `analyser` and `freqData`.
    ============================================================== */
 
-const FFT_SIZE = 512;                 // → 256 frequency bins
+let FFT_SIZE = 512;                   // → 256 bins; user-adjustable live
 
 // --- DOM handles -------------------------------------------------
 const dropZone   = document.getElementById("drop-zone");
@@ -440,16 +612,26 @@ const fileInput  = document.getElementById("file-input");
 const audioEl    = document.getElementById("audio-el");
 const transport  = document.getElementById("transport");
 const trackName  = document.getElementById("track-name");
-const statusEl   = document.getElementById("status-readout");
+const teleSr     = document.getElementById("tele-sr");
+const telePeak   = document.getElementById("tele-peak");
+const teleDb     = document.getElementById("tele-db");
+const teleState  = document.getElementById("tele-state");
 const canvas     = document.getElementById("visualizer");
 const ctx2d      = canvas.getContext("2d");
 
 // --- Audio graph state (populated lazily) ------------------------
-let audioCtx  = null;   // AudioContext — created on first user gesture
-let analyser  = null;   // AnalyserNode — FFT provider
-let freqData  = null;   // Uint8Array(frequencyBinCount) — frequency domain
-let timeData  = null;   // Uint8Array(fftSize) — raw time-domain samples
+let audioCtx   = null;  // AudioContext — created on first user gesture
+let analyser   = null;  // AnalyserNode — FFT provider for BOTH sources
+let fileSource = null;  // MediaElementAudioSourceNode (one per element, EVER)
+let freqData   = null;  // Uint8Array(frequencyBinCount) — frequency domain
+let timeData   = null;  // Uint8Array(fftSize) — raw time-domain samples
 let graphWired = false; // createMediaElementSource may run only ONCE per element
+let binHz      = 0;     // Hz per FFT bin = sampleRate / fftSize
+
+// Mic input state
+let inputMode  = "file";  // 'file' | 'mic'
+let micStream  = null;    // MediaStream — tracks stopped on exit
+let micSource  = null;    // MediaStreamAudioSourceNode
 
 /**
  * Create (or resume) the AudioContext.
@@ -473,20 +655,40 @@ async function getAudioContext() {
  * Idempotent — the source node can only ever be created once
  * per media element, so we guard with `graphWired`.
  */
-async function wireAudioGraph() {
+/**
+ * Create the AnalyserNode + data buffers if they don't exist yet.
+ * Source-agnostic: both the file path and the mic path call this,
+ * so whichever input the user reaches for FIRST builds the analyser.
+ */
+async function ensureAnalyser() {
   const ctx = await getAudioContext();
+  if (!analyser) {
+    analyser = ctx.createAnalyser();
+    analyser.fftSize = FFT_SIZE;            // honors the dropdown value
+    analyser.smoothingTimeConstant = 0.85;  // silky inter-frame easing
+
+    // Reusable buffers — allocated here, filled in place every frame.
+    freqData = new Uint8Array(analyser.frequencyBinCount);
+    timeData = new Uint8Array(analyser.fftSize);
+
+    // System telemetry: actual hardware rate + frequency resolution
+    binHz = ctx.sampleRate / FFT_SIZE;      // e.g. 48000/512 ≈ 93.8 Hz
+    teleSr.textContent = `SR ${ctx.sampleRate} Hz`;
+  }
+  return ctx;
+}
+
+/**
+ * Wire the FILE path: <audio> → analyser → destination (speakers).
+ * Idempotent — the media element source can only ever be created
+ * once per element, so we guard with `graphWired`.
+ */
+async function wireAudioGraph() {
+  const ctx = await ensureAnalyser();
   if (graphWired) return;
 
-  const source = ctx.createMediaElementSource(audioEl);
-  analyser = ctx.createAnalyser();
-  analyser.fftSize = FFT_SIZE;
-  analyser.smoothingTimeConstant = 0.85;  // silky inter-frame easing
-
-  // Reusable buffers — allocated once, filled in place every frame.
-  freqData = new Uint8Array(analyser.frequencyBinCount); // 256 freq bins
-  timeData = new Uint8Array(analyser.fftSize);           // 512 raw samples
-
-  source.connect(analyser);
+  fileSource = ctx.createMediaElementSource(audioEl);
+  fileSource.connect(analyser);
   analyser.connect(ctx.destination);
   graphWired = true;
 }
@@ -498,9 +700,12 @@ async function wireAudioGraph() {
 async function loadTrack(file) {
   if (!file) return;
   if (!file.type.startsWith("audio/") && !/\.mp3$/i.test(file.name)) {
-    statusEl.textContent = "FFT 512 · NOT AN AUDIO FILE";
+    teleState.textContent = "BAD FILE";
     return;
   }
+
+  // A new file implicitly means "back to file mode"
+  if (inputMode === "mic") disableMic();
 
   await wireAudioGraph();   // safe: we're inside a user gesture
 
@@ -515,7 +720,8 @@ async function loadTrack(file) {
   trackName.textContent = file.name;
   transport.classList.add("active");
   dropZone.classList.add("hidden");
-  statusEl.textContent = "FFT 512 · LIVE";
+  teleState.textContent = "LIVE";
+  teleState.classList.add("hot");
 
   startRenderLoop();
 }
@@ -545,6 +751,124 @@ dropZone.addEventListener("drop", (e) => {
   e.preventDefault();
   dropZone.classList.remove("drag-over");
   loadTrack(e.dataTransfer.files[0]);
+});
+
+// --- Microphone / Line-In input -------------------------------------
+const micBtn = document.getElementById("mic-btn");
+
+/**
+ * Route: mic → analyser → (NOTHING).
+ *
+ * The one rule that matters here: the mic must NEVER reach
+ * ctx.destination, or speakers feed the mic feeds the speakers —
+ * an instant feedback howl. So entering mic mode disconnects the
+ * analyser's output entirely; it keeps producing FFT data with no
+ * downstream connection at all (a visual-only tap).
+ */
+async function enableMic() {
+  const ctx = await ensureAnalyser();   // mic can be the FIRST source
+
+  // Ask for the RAW signal: the browser's voice-call DSP (echo
+  // cancellation, auto-gain, noise suppression) actively distorts
+  // the spectrum we're trying to display — music through AGC
+  // "breathes", suppressed noise floors flatten real harmonics.
+  const stream = await navigator.mediaDevices.getUserMedia({
+    audio: {
+      echoCancellation: false,
+      noiseSuppression: false,
+      autoGainControl:  false,
+    },
+  });
+
+  // Detach the file path: silence playback, unplug both hops
+  audioEl.pause();
+  if (graphWired) {
+    fileSource.disconnect();   // file → analyser severed
+    analyser.disconnect();     // analyser → speakers severed (anti-feedback)
+  }
+
+  micStream = stream;
+  micSource = ctx.createMediaStreamSource(stream);
+  micSource.connect(analyser);
+
+  inputMode = "mic";
+  micBtn.setAttribute("aria-pressed", "true");
+  teleState.textContent = "MIC LIVE";
+  teleState.classList.add("hot");
+  dropZone.classList.add("hidden");
+  transport.classList.add("disabled");
+}
+
+/**
+ * Back to file mode: stop the hardware (kills the browser's
+ * recording indicator), then restore the file routing exactly
+ * as wireAudioGraph() originally built it.
+ */
+function disableMic() {
+  if (micSource) { micSource.disconnect(); micSource = null; }
+  if (micStream) {
+    micStream.getTracks().forEach((t) => t.stop());  // releases the device
+    micStream = null;
+  }
+
+  if (graphWired) {
+    fileSource.connect(analyser);
+    analyser.connect(audioCtx.destination);
+  }
+
+  inputMode = "file";
+  micBtn.setAttribute("aria-pressed", "false");
+  transport.classList.remove("disabled");
+
+  if (audioEl.src) {
+    teleState.textContent = "LIVE";    // track stays paused; user resumes
+  } else {
+    teleState.textContent = "STANDBY";
+    teleState.classList.remove("hot");
+    dropZone.classList.remove("hidden");
+  }
+}
+
+micBtn.addEventListener("click", async () => {
+  if (inputMode === "mic") { disableMic(); return; }
+  try {
+    await enableMic();
+  } catch (err) {
+    // Permission denied or no device — leave file mode untouched
+    teleState.textContent = "MIC DENIED";
+    teleState.classList.remove("hot");
+  }
+});
+
+// --- Fullscreen ------------------------------------------------------
+// Targets the STAGE (canvas wrapper), not the canvas itself: a
+// fullscreened <canvas> can't host the overlay button or drop zone.
+// Canvas resolution needs NO special handling here — the render
+// loop's resizeCanvasToDisplaySize() re-syncs the bitmap to the new
+// bounding box × devicePixelRatio on the very next frame, so the
+// graphics scale crisply instead of stretching.
+const fsBtn = document.getElementById("fs-btn");
+const stage = document.getElementById("stage");
+
+fsBtn.addEventListener("click", async () => {
+  try {
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+    } else if (stage.requestFullscreen) {
+      await stage.requestFullscreen();
+    } else if (stage.webkitRequestFullscreen) {
+      stage.webkitRequestFullscreen();         // older Safari
+    }
+  } catch (err) {
+    /* request denied (e.g. iframe without allowfullscreen) — ignore */
+  }
+});
+
+// Keep the accessible label truthful; the icon swap is pure CSS
+// via the :fullscreen pseudo-class.
+document.addEventListener("fullscreenchange", () => {
+  fsBtn.setAttribute("aria-label",
+    document.fullscreenElement ? "Exit fullscreen" : "Enter fullscreen");
 });
 
 
@@ -666,6 +990,51 @@ function updateTransportUI() {
   }
 }
 
+// --- Live audio telemetry (peak frequency + level) -------------------
+let lastPeakStr = "";
+let lastDbStr   = "";
+
+/** Write a telemetry field only if its rounded value changed. */
+function setTele(el, str, cacheKey) {
+  if (cacheKey === "peak" && str !== lastPeakStr) { el.textContent = str; lastPeakStr = str; }
+  if (cacheKey === "db"   && str !== lastDbStr)   { el.textContent = str; lastDbStr   = str; }
+}
+
+/**
+ * Called every frame right after getByteFrequencyData().
+ * ONE combined pass over the array finds both the dominant bin
+ * (max scan) and the mean level (sum) — no second iteration.
+ *
+ *   dominant Hz = maxIndex · (sampleRate / fftSize)
+ *   level dB    = 20·log₁₀(mean / 255)      (0 dB = full scale)
+ */
+function updateTelemetry() {
+  let maxV = 0, maxI = 0, sum = 0;
+  for (let i = 0; i < freqData.length; i++) {
+    const v = freqData[i];
+    sum += v;
+    if (v > maxV) { maxV = v; maxI = i; }
+  }
+
+  // Dominant frequency — bin index × frequency resolution
+  setTele(telePeak,
+    maxV > 0 ? "PEAK " + Math.round(maxI * binHz) + " Hz" : "PEAK ——",
+    "peak");
+
+  // Approximate level in dBFS from the mean magnitude. Rounding to
+  // whole dB keeps the string stable → most frames skip the DOM write.
+  const avg = sum / freqData.length / 255;
+  setTele(teleDb,
+    avg > 0.0005 ? Math.round(20 * Math.log10(avg)) + " dB" : "−∞ dB",
+    "db");
+}
+
+/** Idle/paused: park the live fields. */
+function resetTelemetry() {
+  setTele(telePeak, "PEAK ——", "peak");
+  setTele(teleDb, "−∞ dB", "db");
+}
+
 
 /* ==============================================================
    SECTION 4 — RENDER LOOP
@@ -678,31 +1047,31 @@ function updateTransportUI() {
 let rafId = null;
 
 // --- Render tuning ------------------------------------------------
-const BAR_GAP       = 2;      // px gap between bars (CSS pixels)
-const BINS_RENDERED = 180;    // crop near-silent top bins (>~15.5 kHz)
-const HF_TILT       = 1.6;    // high-frequency compensation strength
-const CAP_COLOR     = "#ffe9b8";  // rounded cap / hottest tip color
+const BAR_GAP = 2;       // px gap between bars (CSS pixels)
+const HF_TILT = 1.6;     // high-frequency compensation strength
+let CAP_COLOR = "#ffe9b8";   // hottest tip color — set by applyTheme()
 
 const reducedMotion =
   window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-/* --- Gradient strip (offscreen, painted ONCE) ---------------------
+/* --- Gradient strip (offscreen) -------------------------------------
    Creating ~180 LinearGradients per frame would hammer the GC, so
-   instead the ember→amber→luminous ramp is rendered once onto a
-   1×256 offscreen canvas. Each bar is then drawn with drawImage(),
-   stretching the strip to that bar's height — meaning EVERY bar
-   carries the full gradient scaled to its own peak (luminous tip
-   on short and tall bars alike), with zero per-frame allocations. */
+   the theme's color ramp is rendered onto a 1×256 offscreen canvas —
+   repainted ONLY on theme change, never per frame. Each bar is drawn
+   with drawImage(), stretching the strip to that bar's height. */
 const gradStrip = document.createElement("canvas");
 gradStrip.width  = 1;
 gradStrip.height = 256;
-{
-  const g    = gradStrip.getContext("2d");
+
+/** (Re)paint the strip with a 4-stop ramp; called by applyTheme(). */
+function paintGradStrip(stops) {
+  const g = gradStrip.getContext("2d");
+  g.clearRect(0, 0, 1, 256);
   const ramp = g.createLinearGradient(0, 256, 0, 0);
-  ramp.addColorStop(0.00, "#6e3f0a");   // deep ember base
-  ramp.addColorStop(0.50, "#f5a623");   // phosphor amber
-  ramp.addColorStop(0.85, "#ffb84d");   // neon orange
-  ramp.addColorStop(1.00, CAP_COLOR);   // luminous tip
+  ramp.addColorStop(0.00, stops[0]);   // deep base
+  ramp.addColorStop(0.50, stops[1]);   // primary accent
+  ramp.addColorStop(0.85, stops[2]);   // bright
+  ramp.addColorStop(1.00, stops[3]);   // luminous tip
   g.fillStyle = ramp;
   g.fillRect(0, 0, 1, 256);
 }
@@ -714,7 +1083,7 @@ const PEAK_GRAVITY     = 0.32;   // px/frame² downward acceleration
 const PEAK_THICKNESS   = 2;      // cap line height in px
 const GLOW_THRESHOLD   = 200;    // raw byte value that triggers bloom
 const GLOW_BLUR        = 15;     // ctx.shadowBlur radius
-const GLOW_COLOR       = "#f5a623";
+let GLOW_COLOR         = "#f5a623";   // set by applyTheme()
 const REFL_SCALE       = 0.55;   // reflection is vertically squashed
 const REFL_ALPHA       = 0.15;   // glossy-surface opacity
 const BASELINE_RATIO   = 0.74;   // bars sit at 74% height; mirror below
@@ -724,26 +1093,38 @@ const BASELINE_RATIO   = 0.74;   // bars sit at 74% height; mirror below
    peakVel[i]  = current fall velocity (px/frame)
    peakHold[i] = frames remaining before gravity kicks in
    barHs[i]    = this frame's bar heights, reused by the mirror pass */
-const peakY    = new Float32Array(BINS_RENDERED);
-const peakVel  = new Float32Array(BINS_RENDERED);
-const peakHold = new Float32Array(BINS_RENDERED);
-const barHs    = new Float32Array(BINS_RENDERED);
+/* Per-bin render state. Sizes depend on the active FFT size, so
+   everything lives behind allocRenderState() — called once at boot
+   and again whenever the FFT dropdown changes. This is the ONLY
+   allocation site; the hot loop itself never allocates. */
+let binsRendered = 0;
+let peakY, peakVel, peakHold, barHs;   // peak-hold physics + mirror cache
+let angCos, angSin;                    // radial-mode trig tables
+
+function allocRenderState(binCount) {
+  // Render ~70% of bins — crops the near-silent top of the spectrum
+  // at every FFT size (180 of 256, 720 of 1024, etc.)
+  binsRendered = Math.max(32, Math.floor(binCount * 0.703));
+
+  peakY    = new Float32Array(binsRendered);
+  peakVel  = new Float32Array(binsRendered);
+  peakHold = new Float32Array(binsRendered);
+  barHs    = new Float32Array(binsRendered);
+
+  // θᵢ = (i/n)·2π − π/2 — fixed per bin count, so precomputed here
+  angCos = new Float32Array(binsRendered);
+  angSin = new Float32Array(binsRendered);
+  for (let i = 0; i < binsRendered; i++) {
+    const theta = (i / binsRendered) * Math.PI * 2 - Math.PI / 2;
+    angCos[i] = Math.cos(theta);
+    angSin[i] = Math.sin(theta);
+  }
+}
+allocRenderState(FFT_SIZE / 2);
 
 /* --- Visualization modes -------------------------------------------
    'bars' | 'circular' | 'waveform' — dispatched inside animate(). */
 let currentMode = "bars";
-
-/* Precomputed unit vectors for the radial layout. The spoke angles
-   never change, so cos/sin become table lookups instead of live trig:
-   2 × 180 = 360 Math calls saved per frame.
-     θᵢ = (i / n)·2π − π/2      ← −π/2 starts bin 0 at 12 o'clock */
-const angCos = new Float32Array(BINS_RENDERED);
-const angSin = new Float32Array(BINS_RENDERED);
-for (let i = 0; i < BINS_RENDERED; i++) {
-  const theta = (i / BINS_RENDERED) * Math.PI * 2 - Math.PI / 2;
-  angCos[i] = Math.cos(theta);
-  angSin[i] = Math.sin(theta);
-}
 
 // Mode switch wiring — aria-pressed doubles as the style hook
 const modeButtons = document.querySelectorAll(".mode-switch button");
@@ -754,6 +1135,58 @@ modeButtons.forEach((btn) => {
       b.setAttribute("aria-pressed", String(b === btn)));
   });
 });
+
+/* --- FFT size adjuster ----------------------------------------------
+   analyser.fftSize is mutable at runtime — the next
+   getByteFrequencyData() call simply returns the new bin count.
+   The data buffers and per-bin state must be resized to match. */
+function setFftSize(size) {
+  FFT_SIZE = size;
+  allocRenderState(size / 2);
+  if (analyser) {
+    analyser.fftSize = size;     // live retune, no graph rebuild
+    freqData = new Uint8Array(analyser.frequencyBinCount);
+    timeData = new Uint8Array(analyser.fftSize);
+    binHz    = audioCtx.sampleRate / size;
+  }
+  document.getElementById("tele-fft").textContent = "FFT " + size;
+}
+document.getElementById("fft-select").addEventListener("change", (e) => {
+  setFftSize(parseInt(e.target.value, 10));
+});
+
+/* --- Color themes ----------------------------------------------------
+   Each theme owns: the CSS accent vars (UI chrome) and the canvas
+   colors (gradient ramp, glow, tips). applyTheme() updates both
+   worlds so the whole app pivots in one call. */
+const THEMES = {
+  amber: { accent: "#f5a623", soft: "rgba(245,166,35,0.12)", tip: "#ffe9b8",
+           ramp: ["#6e3f0a", "#f5a623", "#ffb84d", "#ffe9b8"] },
+  pink:  { accent: "#ff2ec4", soft: "rgba(255,46,196,0.14)", tip: "#ffd1f1",
+           ramp: ["#36063f", "#8b2fd6", "#ff2ec4", "#ffd1f1"] },
+  green: { accent: "#22e06a", soft: "rgba(34,224,106,0.12)", tip: "#d2ffe0",
+           ramp: ["#04300f", "#0f9d3e", "#22e06a", "#d2ffe0"] },
+  ice:   { accent: "#41c7ff", soft: "rgba(65,199,255,0.12)", tip: "#dcf4ff",
+           ramp: ["#0a2c47", "#1f7fd1", "#41c7ff", "#dcf4ff"] },
+};
+
+function applyTheme(name) {
+  const t    = THEMES[name];
+  const root = document.documentElement.style;
+  root.setProperty("--accent", t.accent);        // UI chrome
+  root.setProperty("--accent-soft", t.soft);
+  root.setProperty("--tip", t.tip);
+  CAP_COLOR  = t.tip;                            // canvas world
+  GLOW_COLOR = t.accent;
+  paintGradStrip(t.ramp);
+  document.querySelectorAll(".theme-swatches .swatch").forEach((s) =>
+    s.setAttribute("aria-pressed", String(s.dataset.theme === name)));
+}
+
+document.querySelectorAll(".theme-swatches .swatch").forEach((s) =>
+  s.addEventListener("click", () => applyTheme(s.dataset.theme)));
+
+applyTheme("amber");   // boot theme — also performs the first strip paint
 
 /** Match the canvas bitmap to its CSS box (DPR-aware). */
 function resizeCanvasToDisplaySize() {
@@ -782,16 +1215,21 @@ function animate() {
   // 1. CLEAR
   ctx2d.clearRect(0, 0, w, h);
 
-  // No graph yet, or track paused → ambient idle pattern
-  if (!analyser || audioEl.paused) {
+  // Idle only when there's no analyser, or the FILE is paused while
+  // in file mode — mic mode renders live regardless of the <audio>.
+  if (!analyser || (inputMode === "file" && audioEl.paused)) {
+    if (analyser) resetTelemetry();
     drawIdle(w, h);
     return;
   }
 
-  // 2. READ + DRAW — dispatched by visualization mode. Note the
-  // waveform mode pulls from a DIFFERENT data source (time domain).
+  // 2. READ — frequency data feeds telemetry in EVERY mode; the
+  // waveform mode additionally pulls raw time-domain samples for
+  // its trace. Both reads fill preallocated buffers in place.
+  analyser.getByteFrequencyData(freqData);
+  updateTelemetry();
+
   if (currentMode === "circular") {
-    analyser.getByteFrequencyData(freqData);    // frequency domain
     drawCircular(w, h);
     return;
   }
@@ -802,10 +1240,9 @@ function animate() {
   }
 
   // Default mode: linear bars (frequency domain)
-  analyser.getByteFrequencyData(freqData);
 
   // 3. ITERATE + 4. DRAW
-  const n       = Math.min(BINS_RENDERED, freqData.length);
+  const n       = Math.min(binsRendered, freqData.length);
   const baseY   = Math.round(h * BASELINE_RATIO);  // bars stand here
   const slotW   = w / n;                           // bar + gap
   const barW    = Math.max(1, slotW - BAR_GAP);
@@ -905,7 +1342,7 @@ function animate() {
  * a single GPU stroke call instead of 180.
  */
 function drawCircular(w, h) {
-  const n   = Math.min(BINS_RENDERED, freqData.length);
+  const n   = Math.min(binsRendered, freqData.length);
   const cx  = w / 2;
   const cy  = h / 2;
   const dim = Math.min(w, h);
